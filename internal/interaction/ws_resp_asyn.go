@@ -39,7 +39,7 @@ func GenMsgIncr(userID string) string {
 	return userID + "_" + utils.OperationIDGenerator()
 }
 
-// 每一个操作对应一个通知channel
+// 为每个请求生成一个channel和msgIncr，使用map关联起来 msgIncr->channel
 func (u *WsRespAsyn) AddCh(userID string) (string, chan GeneralWsResp) {
 	u.wsMutex.Lock()
 	defer u.wsMutex.Unlock()
@@ -65,6 +65,7 @@ func (u *WsRespAsyn) AddChByIncr(msgIncr string) chan GeneralWsResp {
 	return ch
 }
 
+// 获取对应的msgIncr对应的channel
 func (u *WsRespAsyn) GetCh(msgIncr string) chan GeneralWsResp {
 	ch, ok := u.wsNotification[msgIncr]
 	if ok {
@@ -99,7 +100,7 @@ func notifyCh(ch chan GeneralWsResp, value GeneralWsResp, timeout int64) error {
 	}
 }
 
-// 将结果通知到对应的channel
+// 将结果通知到对应的channel (对于ws收到的每个响应，通过msgIncr找到channel，并往channel发送响应，通知响应到达；)
 func (u *WsRespAsyn) notifyResp(wsResp GeneralWsResp) error {
 	u.wsMutex.Lock()
 	defer u.wsMutex.Unlock()

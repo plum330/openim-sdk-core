@@ -91,8 +91,12 @@ func NewConversation(ws *ws.Ws, db *db.DataBase, p *ws.PostApi,
 }
 
 func (c *Conversation) GetCh() chan common.Cmd2Value {
+	// 就是conversation channel
 	return c.recvCH
 }
+
+// 处理消息同步（推送的 / 主动同步的）
+// 从conversationCh 中读取缺失的历史消息，按照消息类型做业务处理，具体包括消息落地本地db，触发新消息回调，触发会话改变回调（或新增回调）
 func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 	operationID := c2v.Value.(sdk_struct.CmdNewMsgComeToConversation).OperationID
 	allMsg := c2v.Value.(sdk_struct.CmdNewMsgComeToConversation).MsgList
@@ -203,6 +207,7 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 				continue
 			}
 		}
+		// 消息是自己发送的
 		if v.SendID == c.loginUserID { //seq
 			// Messages sent by myself  //if  sent through  this terminal
 			m, err := c.db.GetMessageController(msg)
@@ -271,6 +276,7 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 				}
 			}
 		} else { //Sent by others
+			// 消息是其他人发送的
 			if _, err := c.db.GetMessageController(msg); err != nil { //Deduplication operation
 				lc := model_struct.LocalConversation{
 					ConversationType:  v.SessionType,
@@ -444,6 +450,7 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 		log.Debug(operationID, "newMessage  cost time : ", b12-b10)
 	}
 
+	// 触发一些消息回调
 	//log.Info(operationID, "trigger map is :", newConversationSet, conversationChangedSet)
 	if len(newConversationSet) != 0 {
 		c.ConversationListener.OnNewConversation(utils.StructToJsonString(mapConversationToList(newConversationSet)))
@@ -904,7 +911,7 @@ func (c *Conversation) doUpdateConversation(c2v common.Cmd2Value) {
 	}
 }
 
-// 接收到本地channel中的信息，进行处理
+// 对conversation channel的信息进行读取&处理 （conversation channel中有各种不同cmd类型的消息）
 func (c *Conversation) Work(c2v common.Cmd2Value) {
 
 	log.Info("internal", "doListener work..", c2v.Cmd)
@@ -914,6 +921,7 @@ func (c *Conversation) Work(c2v common.Cmd2Value) {
 		log.Info("internal", "CmdDeleteConversation start ..", c2v.Cmd)
 		c.doDeleteConversation(c2v)
 		log.Info("internal", "CmdDeleteConversation end..", c2v.Cmd)
+		// 消息同步
 	case constant.CmdNewMsgCome:
 		log.Info("internal", "doMsgNew start..", c2v.Cmd)
 		c.doMsgNew(c2v)

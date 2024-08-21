@@ -238,6 +238,7 @@ func (u *LoginMgr) login(userID, token string, cb open_im_sdk_callback.Base, ope
 	}
 
 	u.conversation.SyncConversations(operationID)
+	// 处理 conversation channel消息
 	go common.DoListener(u.conversation)
 	log.Info(operationID, "login success...")
 	cb.OnSuccess("")

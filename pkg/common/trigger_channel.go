@@ -122,7 +122,7 @@ func DoListener(Li goroutine) {
 	log.Info("internal", "doListener start.", Li.GetCh())
 	for {
 		select {
-		// 读取本地channel信息
+		// 读取本地channel信息, 如消息同步channel:PushMsgAndMaxSeqCh
 		case cmd := <-Li.GetCh():
 			if cmd.Cmd == constant.CmdUnInit {
 				log.Warn("", "close doListener channel ", Li.GetCh())

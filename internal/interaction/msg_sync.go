@@ -35,6 +35,7 @@ func (m *MsgSync) compareSeq() {
 
 func (m *MsgSync) doMaxSeq(cmd common.Cmd2Value) {
 	m.selfMsgSync.doMaxSeq(cmd)
+	// 超级群因为采用的是读扩散模式，所以同步逻辑是不一样的(按照conversation_id seq)
 	m.superGroupMsgSync.doMaxSeq(cmd)
 }
 
@@ -48,10 +49,13 @@ func (m *MsgSync) doPushMsg(cmd common.Cmd2Value) {
 	}
 }
 
+// 读取PushMsgAndMaxSeqCh通道信息，进行处理
 func (m *MsgSync) Work(cmd common.Cmd2Value) {
 	switch cmd.Cmd {
+	// 处理推送的消息
 	case constant.CmdPushMsg:
 		m.doPushMsg(cmd)
+		// 处理max seq同步消息
 	case constant.CmdMaxSeq:
 		m.doMaxSeq(cmd)
 	default:
@@ -63,12 +67,15 @@ func (m *MsgSync) GetCh() chan common.Cmd2Value {
 	return m.PushMsgAndMaxSeqCh
 }
 
+// 消息同步流程
+
 func NewMsgSync(dataBase *db.DataBase, ws *Ws, loginUserID string, ch chan common.Cmd2Value, pushMsgAndMaxSeqCh chan common.Cmd2Value, joinedSuperGroupCh chan common.Cmd2Value) *MsgSync {
 	// PushMsgAndMaxSeqCh 消息同步本地channel
 	p := &MsgSync{DataBase: dataBase, Ws: ws, loginUserID: loginUserID, conversationCh: ch, PushMsgAndMaxSeqCh: pushMsgAndMaxSeqCh}
 	p.superGroupMsgSync = NewSuperGroupMsgSync(dataBase, ws, loginUserID, ch, joinedSuperGroupCh)
 	p.selfMsgSync = NewSelfMsgSync(dataBase, ws, loginUserID, ch)
 	//	p.selfMsgSync = NewSelfMsgSyncLatestModel(dataBase, ws, loginUserID, ch)
+	// sdk启动时候，首先就要计算出需要同步的max seq
 	p.compareSeq()
 	// 监听处理消息同步的本地channel
 	go common.DoListener(p)

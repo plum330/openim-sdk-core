@@ -13,6 +13,18 @@ import (
 	"time"
 )
 
+/*
+https://blog.csdn.net/OpenIM/article/details/123570158
+Ws：模块对WsConn 和 WsRespAsyn功能进行整合
+WsConn：ws连接管理器。提供函数供其他方调用，具体包括：
+（1）ws连接服务端，和OpenIM服务端保持长连接；
+（2）关闭ws连接；
+（3）通过ws发送请求；
+WsRespAsyn：ws请求-响应同步器，因为ws是异步处理，需要把请求和响应关联起来，提供函数供其他方调用（消息发送，心跳发送，拉取历史消息等）
+（1）getCh：为每个请求生成一个channel和msgIncr，使用map关联起来 msgIncr->channel
+（2）notifyResp：对于ws收到的每个响应，通过msgIncr找到channel，并往channel发送响应，通知响应到达；
+*/
+
 type Ws struct {
 	*WsRespAsyn
 	*WsConn
@@ -172,6 +184,12 @@ func (w *Ws) reConnSleep(operationID string, sleep int32) (error, bool) {
 }
 
 // 从ws中读取消息
+/*
+接收服务端ws数据，并根据收到的数据类型（心跳、推送、踢出登录、拉取历史消息等），触发不同的逻辑处理，
+（1）对于主动发送请求的响应，则调用WsRespAsyn的notifyResp响应触发接口；
+（2）对于push消息，写入PushMsgAndMaxSeqCh ，触发MsgSync消息同步协程。
+*/
+
 func (w *Ws) ReadData() {
 	isErrorOccurred := false
 	for {

@@ -40,14 +40,18 @@ func (m *SelfMsgSync) GetLostMsgSeqList(minSeqInSvr uint32, maxSeqInSvr uint32) 
 
 func (m *SelfMsgSync) compareSeq(operationID string) {
 	//todo 统计中间缺失的seq，并同步
+
+	// 获取sqlite中的max seq
 	n, err := m.GetNormalMsgSeq()
 	if err != nil {
 		log.Error(operationID, "GetNormalMsgSeq failed ", err.Error())
 	}
+	// 获取sqlite中异常的max seq
 	a, err := m.GetAbnormalMsgSeq()
 	if err != nil {
 		log.Error(operationID, "GetAbnormalMsgSeq failed ", err.Error())
 	}
+	// 确定需要同步的max seq
 	if n > a {
 		m.seqMaxSynchronized = n
 	} else {
@@ -63,6 +67,7 @@ func (m *SelfMsgSync) doMaxSeq(cmd common.Cmd2Value) {
 	operationID := cmd.Value.(sdk_struct.CmdMaxSeqToMsgSync).OperationID
 	log.Debug(operationID, "recv max seq on svr, doMaxSeq, maxSeqOnSvr, m.seqMaxSynchronized, m.seqMaxNeedSync",
 		maxSeqOnSvr, m.seqMaxSynchronized, m.seqMaxNeedSync)
+	// 比本地max seq小， 说明重复了不处理
 	if maxSeqOnSvr < m.seqMaxNeedSync {
 		return
 	}
@@ -81,6 +86,7 @@ func (m *SelfMsgSync) doPushBatchMsg(cmd common.Cmd2Value) {
 		return
 	}
 
+	// 只有一条消息 & seq = 0
 	if len(msgDataWrap.MsgDataList) == 1 && msgDataWrap.MsgDataList[0].Seq == 0 {
 		log.Debug(operationID, utils.GetSelfFuncName(), "seq ==0 TriggerCmdNewMsgCome", msgDataWrap.MsgDataList[0].String())
 		m.TriggerCmdNewMsgCome([]*server_api_params.MsgData{msgDataWrap.MsgDataList[0]}, operationID)
@@ -89,6 +95,7 @@ func (m *SelfMsgSync) doPushBatchMsg(cmd common.Cmd2Value) {
 
 	//to cache
 	var maxSeq uint32
+	// 遍历消息列表
 	for _, v := range msgDataWrap.MsgDataList {
 		if v.Seq > m.seqMaxSynchronized {
 			m.pushMsgCache[v.Seq] = v
@@ -109,6 +116,7 @@ func (m *SelfMsgSync) doPushBatchMsg(cmd common.Cmd2Value) {
 
 	seqMaxSynchronizedBegin := m.seqMaxSynchronized
 	var triggerMsgList []*server_api_params.MsgData
+	// 校验接收到的消息序列和本地消息序列是否能对应
 	for {
 		seqMaxSynchronizedBegin++
 		cacheMsg, ok := m.pushMsgCache[seqMaxSynchronizedBegin]
@@ -122,8 +130,10 @@ func (m *SelfMsgSync) doPushBatchMsg(cmd common.Cmd2Value) {
 
 	log.Debug(operationID, "TriggerCmdNewMsgCome, len:  ", len(triggerMsgList))
 	if len(triggerMsgList) != 0 {
+		// 把消息放入conversationCh ，触发conversation协程处理
 		m.TriggerCmdNewMsgCome(triggerMsgList, operationID)
 	}
+	// 清理/释放内存
 	for _, v := range triggerMsgList {
 		delete(m.pushMsgCache, v.Seq)
 	}
@@ -142,6 +152,7 @@ func (m *SelfMsgSync) doPushMsg(cmd common.Cmd2Value) {
 	}
 }
 
+// 处理单条推送消息同步
 func (m *SelfMsgSync) doPushSingleMsg(cmd common.Cmd2Value) {
 	msg := cmd.Value.(sdk_struct.CmdPushMsgToMsgSync).Msg
 	operationID := cmd.Value.(sdk_struct.CmdPushMsgToMsgSync).OperationID
@@ -154,11 +165,13 @@ func (m *SelfMsgSync) doPushSingleMsg(cmd common.Cmd2Value) {
 		return
 	}
 
+	// 消息序列号seq = 本地消息seq + 1 , 说明这条消息需要保存下来
 	if msg.Seq == m.seqMaxSynchronized+1 {
 		log.Debug(operationID, "TriggerCmdNewMsgCome ", msg.ServerMsgID, msg.ClientMsgID, msg.Seq)
 		m.TriggerCmdNewMsgCome([]*server_api_params.MsgData{msg}, operationID)
 		m.seqMaxSynchronized = msg.Seq
 	}
+	// 更新需要同步的max seq
 	if msg.Seq > m.seqMaxNeedSync {
 		m.seqMaxNeedSync = msg.Seq
 	}
@@ -170,6 +183,7 @@ func (m *SelfMsgSync) doPushSingleMsg(cmd common.Cmd2Value) {
 func (m *SelfMsgSync) syncMsg(operationID string) {
 	if m.seqMaxNeedSync > m.seqMaxSynchronized {
 		log.Info(operationID, "do syncMsg ", m.seqMaxSynchronized+1, m.seqMaxNeedSync)
+		// 同步的seq范围是[m.seqMaxSynchronized+1, m.seqMaxNeedSync]
 		m.syncMsgFromServer(m.seqMaxSynchronized+1, m.seqMaxNeedSync)
 		m.seqMaxSynchronized = m.seqMaxNeedSync
 	} else {
@@ -248,6 +262,7 @@ func (m *SelfMsgSync) syncMsgFromServerSplit(needSyncSeqList []uint32) {
 	m.syncMsgFromCache2ServerSplit(needSyncSeqList)
 }
 
+// 把拉取/推送的消息放入conversationCh ，触发conversation协程处理
 func (m *SelfMsgSync) TriggerCmdNewMsgCome(msgList []*server_api_params.MsgData, operationID string) {
 	for {
 		err := common.TriggerCmdNewMsgCome(sdk_struct.CmdNewMsgComeToConversation{MsgList: msgList, OperationID: operationID}, m.conversationCh)

@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+// 心跳管理器
+
 type Heartbeat struct {
 	//	*Ws
 	*MsgSync
@@ -58,6 +60,11 @@ func (u *Heartbeat) IsTokenExp(operationID string) bool {
 	}
 }
 
+/*
+1. 心跳逻辑和消息同步逻辑融合
+2. 在心跳逻辑中触发消息同步
+*/
+
 func (u *Heartbeat) Run() {
 	//	heartbeatInterval := 30
 	reqTimeout := 30
@@ -101,7 +108,7 @@ func (u *Heartbeat) Run() {
 			log.Error(operationID, "GetReadDiffusionGroupIDList failed ", err.Error())
 		}
 		log.Debug(operationID, "GetJoinedSuperGroupIDList ", groupIDList)
-		// 每一次心跳都触发获取一次seq ?
+		// 每一次心跳触发从服务端获取max / min seq
 		resp, err := u.SendReqWaitResp(&server_api_params.GetMaxAndMinSeqReq{UserID: u.loginUserID, GroupIDList: groupIDList}, constant.WSGetNewestSeq, reqTimeout, retryTimes, u.loginUserID, operationID)
 		if err != nil {
 			log.Error(operationID, "SendReqWaitResp failed ", err.Error(), constant.WSGetNewestSeq, reqTimeout, u.loginUserID)
@@ -126,7 +133,7 @@ func (u *Heartbeat) Run() {
 			groupID2MaxSeqOnSvr[groupID] = seq.MaxSeq
 		}
 		for {
-			// 发送获取到的newest seq到本地channel， 然后触发获取msg sync
+			// 把获取到的max seq写入PushMsgAndMaxSeqCh，去触发MsgSync消息同步协程
 			err = common.TriggerCmdMaxSeq(sdk_struct.CmdMaxSeqToMsgSync{OperationID: operationID, MaxSeqOnSvr: wsSeqResp.MaxSeq, GroupID2MaxSeqOnSvr: groupID2MaxSeqOnSvr}, u.PushMsgAndMaxSeqCh)
 			if err != nil {
 				log.Error(operationID, "TriggerMaxSeq failed ", err.Error(), " MaxSeq ", wsSeqResp.MaxSeq)

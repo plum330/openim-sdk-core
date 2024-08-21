@@ -44,6 +44,7 @@ type DataBase struct {
 func NewDataBase(loginUserID string, dbDir string) (*DataBase, error) {
 	UserDBLock.Lock()
 	defer UserDBLock.Unlock()
+	// 一个端支持对个账号登录？
 	dataBase, ok := UserDBMap[loginUserID]
 	if !ok {
 		dataBase = &DataBase{loginUserID: loginUserID, dbDir: dbDir}
