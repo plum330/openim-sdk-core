@@ -109,6 +109,10 @@ func DelUserRouter(uid string) {
 	delete(UserRouteMap, uid)
 }
 
+/*
+1. 把ws func router的方法，通过func name -> func 映射到map -- 全局变量
+2. 设置回调对象到LoginMgr -- 全局变量
+*/
 func GenUserRouterNoLock(uid string, batchMsg int, operationID string) *RefRouter {
 	_, ok := UserRouteMap[uid]
 	if ok {
@@ -163,7 +167,7 @@ func (wsRouter *WsFuncRouter) GlobalSendMessage(data interface{}) {
 }
 
 // listener
-// 发送数据到ws.ch（本地channel）
+// 发送回调处理数据到ws.ch（本地channel）
 func SendOneUserMessage(data interface{}, uid string) {
 	var chMsg ChanMsg
 	chMsg.data, _ = json.Marshal(data)

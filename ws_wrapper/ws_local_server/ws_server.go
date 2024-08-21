@@ -43,7 +43,7 @@ type WServer struct {
 	// 用户和ws conn之间的关系
 	wsConnToUser map[*UserConn]map[string]string
 	wsUserToConn map[string]map[string]*UserConn
-	// 本地channel
+	// 处理回调的channel
 	ch chan ChanMsg
 }
 
@@ -85,6 +85,7 @@ func (ws *WServer) getMsgAndSend() {
 	}()
 	for {
 		select {
+		// 处理回调信息 -- 回调最终是要通过长连接发送到服务端
 		case r := <-ws.ch:
 			// 读取成功就启动一个goroutine进行处理
 			go func() {

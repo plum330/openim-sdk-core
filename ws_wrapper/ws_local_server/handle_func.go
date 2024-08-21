@@ -32,6 +32,7 @@ func (ws *WServer) DoLogin(m Req, conn *UserConn) {
 		// 建立uid -> func name -> func
 		refR := GenUserRouterNoLock(m.UserID, m.Batch, m.OperationID)
 		params := []reflect.Value{reflect.ValueOf(m.Data), reflect.ValueOf(m.OperationID)}
+		// 找到对应的方法执行
 		vf, ok := (refR.refName)[m.ReqFuncName]
 		if ok {
 			// 通过反射调用函数

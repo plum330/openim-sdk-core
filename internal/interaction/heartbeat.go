@@ -74,7 +74,7 @@ func (u *Heartbeat) Run() {
 		operationID := utils.OperationIDGenerator()
 		if heartbeatNum != 0 {
 			select {
-			// 通过channel解耦，从本地channel中读取信息处理不同的命令
+			// 通过心跳队列 heart channel解耦，从本地channel中读取信息处理不同的命令
 			case r := <-u.cmdCh:
 				if r.Cmd == constant.CmdLogout {
 					log.Warn(operationID, "recv logout cmd, close conn,  set logout state, Goexit...")

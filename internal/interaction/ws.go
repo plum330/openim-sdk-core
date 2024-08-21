@@ -204,7 +204,7 @@ func (w *Ws) ReadData() {
 		operationID := utils.OperationIDGenerator()
 		if isErrorOccurred {
 			select {
-			// ws读取消息异常情况下从本地channel读取信息处理
+			// ws读取消息异常情况下从本地cmd channel读取信息处理
 			case r := <-w.cmdCh:
 				if r.Cmd == constant.CmdLogout {
 					log.Info(operationID, "recv CmdLogout, return, close conn")
@@ -315,6 +315,7 @@ func (w *Ws) doWsMsg(message []byte) {
 	}
 }
 
+// 退出logout发送信息到ws cmd channel
 func (w *Ws) Logout(operationID string) {
 	w.SetLoginState(constant.Logout)
 	w.CloseConn()

@@ -40,7 +40,7 @@ func (f *FriendCallback) OnBlackDeleted(friendInfo string) {
 	SendOneUserMessage(EventData{cleanUpfuncName(runFuncName()), 0, "", friendInfo, "0"}, f.uid)
 }
 
-// 设置friend变化时，对应的回调方法集
+// 设置friend变化时，对应的回调方法集 到 LoginMgr
 func (wsRouter *WsFuncRouter) SetFriendListener() {
 	var fr FriendCallback
 	fr.uid = wsRouter.uId
