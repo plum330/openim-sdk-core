@@ -57,6 +57,7 @@ func NewWs(wsRespAsyn *WsRespAsyn, wsConn *WsConn, cmdCh chan common.Cmd2Value, 
 
 func (w *Ws) WaitResp(ch chan GeneralWsResp, timeout int, operationID string, connSend *websocket.Conn) (*GeneralWsResp, error) {
 	select {
+	// 从notification channel中读取信息
 	case r := <-ch:
 		log.Debug(operationID, "ws ch recvMsg success, code ", r.ErrCode)
 		if r.ErrCode != 0 {
@@ -77,6 +78,7 @@ func (w *Ws) WaitResp(ch chan GeneralWsResp, timeout int, operationID string, co
 		if connSend == nil {
 			return nil, errors.New("ws ch recvMsg err, timeout")
 		}
+		// 发送消息的ws conn和本地持有的ws conn不是同一个连接
 		if connSend != w.WsConn.conn {
 			return nil, constant.WsRecvConnDiff
 		} else {
@@ -85,16 +87,20 @@ func (w *Ws) WaitResp(ch chan GeneralWsResp, timeout int, operationID string, co
 	}
 }
 
+// 请求响应同步化，提供函数SendReqWaitResp，调用者通过ws发送请求后，等待此请求的响应达到。
+
 func (w *Ws) SendReqWaitResp(m proto.Message, reqIdentifier int32, timeout, retryTimes int, senderID, operationID string) (*GeneralWsResp, error) {
 	var wsReq GeneralWsReq
 	var connSend *websocket.Conn
 	var err error
 	wsReq.ReqIdentifier = reqIdentifier
 	wsReq.OperationID = operationID
+	// 构建一个msgIncr对应的notification channel
 	msgIncr, ch := w.AddCh(senderID)
 	log.Debug(wsReq.OperationID, "SendReqWaitResp AddCh msgIncr:", msgIncr, reqIdentifier)
 	defer w.DelCh(msgIncr)
 	defer log.Debug(wsReq.OperationID, "SendReqWaitResp DelCh msgIncr:", msgIncr, reqIdentifier)
+	// 构建发送请求
 	wsReq.SendID = senderID
 	wsReq.MsgIncr = msgIncr
 	wsReq.Data, err = proto.Marshal(m)
@@ -118,6 +124,7 @@ func (w *Ws) SendReqWaitResp(m proto.Message, reqIdentifier int32, timeout, retr
 		flag = 1
 		break
 	}
+	// 发生成功
 	if flag == 1 {
 		log.Debug(operationID, "send ok wait resp")
 		r1, r2 := w.WaitResp(ch, timeout, wsReq.OperationID, connSend)
@@ -128,6 +135,7 @@ func (w *Ws) SendReqWaitResp(m proto.Message, reqIdentifier int32, timeout, retr
 		return nil, utils.Wrap(err, "SendReqWaitResp failed")
 	}
 }
+
 func (w *Ws) SendReqTest(m proto.Message, reqIdentifier int32, timeout int, senderID, operationID string) bool {
 	var wsReq GeneralWsReq
 	var connSend *websocket.Conn
@@ -262,7 +270,7 @@ func (w *Ws) ReadData() {
 	}
 }
 
-// 处理从ws读取到的消息
+// 处理从ws读取到的二进制消息(newest seq / pull msg by seq / push msg / send msg / kick / logout / send signaling)
 func (w *Ws) doWsMsg(message []byte) {
 	wsResp, err := w.decodeBinaryWs(message)
 	if err != nil {

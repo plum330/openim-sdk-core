@@ -43,6 +43,7 @@ func GenMsgIncr(userID string) string {
 func (u *WsRespAsyn) AddCh(userID string) (string, chan GeneralWsResp) {
 	u.wsMutex.Lock()
 	defer u.wsMutex.Unlock()
+	// 对user id按照时间序(纳秒)生成msgIncr
 	msgIncr := GenMsgIncr(userID)
 
 	ch := make(chan GeneralWsResp, 1)
@@ -84,7 +85,7 @@ func (u *WsRespAsyn) DelCh(msgIncr string) {
 	}
 }
 
-// 数据写入本地通知channel
+// 数据写入本地通知channel - notification channel
 func notifyCh(ch chan GeneralWsResp, value GeneralWsResp, timeout int64) error {
 	var flag = 0
 	select {
@@ -105,10 +106,12 @@ func (u *WsRespAsyn) notifyResp(wsResp GeneralWsResp) error {
 	u.wsMutex.Lock()
 	defer u.wsMutex.Unlock()
 
+	// 这里的msgIncr就是通过ws发送消息时生成的msgIncr
 	ch := u.GetCh(wsResp.MsgIncr)
 	if ch == nil {
 		return utils.Wrap(errors.New("no ch"), "GetCh failed "+wsResp.MsgIncr)
 	}
+	// 将ws通知到notification channel中
 	for {
 		err := notifyCh(ch, wsResp, 1)
 		if err != nil {
