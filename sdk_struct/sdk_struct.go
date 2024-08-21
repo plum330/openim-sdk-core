@@ -4,6 +4,7 @@ import "open_im_sdk/pkg/server_api_params"
 
 ////////////////////////// message/////////////////////////
 
+// 接收消息
 type MessageReceipt struct {
 	GroupID     string   `json:"groupID"`
 	UserID      string   `json:"userID"`
@@ -13,6 +14,8 @@ type MessageReceipt struct {
 	ContentType int32    `json:"contentType"`
 	SessionType int32    `json:"sessionType"`
 }
+
+// 撤回消息
 type MessageRevoked struct {
 	RevokerID                   string `json:"revokerID"`
 	RevokerRole                 int32  `json:"revokerRole"`
@@ -24,6 +27,8 @@ type MessageRevoked struct {
 	SourceMessageSenderNickname string `json:"sourceMessageSenderNickname"`
 	SessionType                 int32  `json:"sessionType"`
 }
+
+// 图片信息
 type ImageInfo struct {
 	Width  int32  `json:"x"`
 	Height int32  `json:"y"`
@@ -38,6 +43,8 @@ type PictureBaseInfo struct {
 	Height int32  `json:"height"`
 	Url    string `json:"url,omitempty"`
 }
+
+// 音频信息
 type SoundBaseInfo struct {
 	UUID      string `json:"uuid,omitempty"`
 	SoundPath string `json:"soundPath,omitempty"`
@@ -45,6 +52,8 @@ type SoundBaseInfo struct {
 	DataSize  int64  `json:"dataSize"`
 	Duration  int64  `json:"duration"`
 }
+
+// 视频信息
 type VideoBaseInfo struct {
 	VideoPath      string `json:"videoPath,omitempty"`
 	VideoUUID      string `json:"videoUUID,omitempty"`
@@ -59,6 +68,8 @@ type VideoBaseInfo struct {
 	SnapshotWidth  int32  `json:"snapshotWidth"`
 	SnapshotHeight int32  `json:"snapshotHeight"`
 }
+
+// 文件信息
 type FileBaseInfo struct {
 	FilePath  string `json:"filePath,omitempty"`
 	UUID      string `json:"uuid,omitempty"`
@@ -67,28 +78,35 @@ type FileBaseInfo struct {
 	FileSize  int64  `json:"fileSize"`
 }
 
+// 消息结构
 type MsgStruct struct {
-	ClientMsgID      string                            `json:"clientMsgID,omitempty"`
-	ServerMsgID      string                            `json:"serverMsgID,omitempty"`
-	CreateTime       int64                             `json:"createTime"`
-	SendTime         int64                             `json:"sendTime"`
-	SessionType      int32                             `json:"sessionType"`
-	SendID           string                            `json:"sendID,omitempty"`
-	RecvID           string                            `json:"recvID,omitempty"`
-	MsgFrom          int32                             `json:"msgFrom"`
-	ContentType      int32                             `json:"contentType"`
-	SenderPlatformID int32                             `json:"platformID"`
-	SenderNickname   string                            `json:"senderNickname,omitempty"`
-	SenderFaceURL    string                            `json:"senderFaceUrl,omitempty"`
-	GroupID          string                            `json:"groupID,omitempty"`
-	Content          string                            `json:"content,omitempty"`
-	Seq              uint32                            `json:"seq"`
-	IsRead           bool                              `json:"isRead"`
-	Status           int32                             `json:"status"`
-	OfflinePush      server_api_params.OfflinePushInfo `json:"offlinePush,omitempty"`
-	AttachedInfo     string                            `json:"attachedInfo,omitempty"`
-	Ex               string                            `json:"ex,omitempty"`
-	PictureElem      struct {
+	// 客户端消息ID
+	ClientMsgID string `json:"clientMsgID,omitempty"`
+	// 服务端消息ID
+	ServerMsgID string `json:"serverMsgID,omitempty"`
+	CreateTime  int64  `json:"createTime"`
+	SendTime    int64  `json:"sendTime"`
+	// 私聊/ 群聊
+	SessionType int32  `json:"sessionType"`
+	SendID      string `json:"sendID,omitempty"`
+	RecvID      string `json:"recvID,omitempty"`
+	MsgFrom     int32  `json:"msgFrom"`
+	// 消息类型: 图片 / 视频 / ...
+	ContentType      int32  `json:"contentType"`
+	SenderPlatformID int32  `json:"platformID"`
+	SenderNickname   string `json:"senderNickname,omitempty"`
+	SenderFaceURL    string `json:"senderFaceUrl,omitempty"`
+	GroupID          string `json:"groupID,omitempty"`
+	// 消息内容
+	Content string `json:"content,omitempty"`
+	// 消息seq
+	Seq          uint32                            `json:"seq"`
+	IsRead       bool                              `json:"isRead"`
+	Status       int32                             `json:"status"`
+	OfflinePush  server_api_params.OfflinePushInfo `json:"offlinePush,omitempty"`
+	AttachedInfo string                            `json:"attachedInfo,omitempty"`
+	Ex           string                            `json:"ex,omitempty"`
+	PictureElem  struct {
 		SourcePath      string          `json:"sourcePath,omitempty"`
 		SourcePicture   PictureBaseInfo `json:"sourcePicture,omitempty"`
 		BigPicture      PictureBaseInfo `json:"bigPicture,omitempty"`
@@ -181,7 +199,9 @@ type MessageEntity struct {
 	Info   string `json:"info,omitempty"`
 }
 
+// 群已读信息
 type GroupHasReadInfo struct {
+	// 已读人列表
 	HasReadUserIDList []string `json:"hasReadUserIDList,omitempty"`
 	HasReadCount      int32    `json:"hasReadCount"`
 	GroupMemberCount  int32    `json:"groupMemberCount"`
@@ -193,12 +213,12 @@ func (n NewMsgList) Len() int {
 	return len(n)
 }
 
-//Implement the sort.Interface interface comparison element method
+// Implement the sort.Interface interface comparison element method
 func (n NewMsgList) Less(i, j int) bool {
 	return n[i].SendTime < n[j].SendTime
 }
 
-//Implement the sort.Interface interface exchange element method
+// Implement the sort.Interface interface exchange element method
 func (n NewMsgList) Swap(i, j int) {
 	n[i], n[j] = n[j], n[i]
 }
@@ -214,14 +234,19 @@ type IMConfig struct {
 
 var SvrConf IMConfig
 
+// 会话消息同步对比结构？
 type CmdNewMsgComeToConversation struct {
-	MsgList       []*server_api_params.MsgData
-	OperationID   string
-	SyncFlag      int
-	MaxSeqOnSvr   uint32
+	MsgList     []*server_api_params.MsgData
+	OperationID string
+	SyncFlag    int
+	// 服务端最大的seq
+	MaxSeqOnSvr uint32
+	// 本地最大的seq
 	MaxSeqOnLocal uint32
+	// 当前最大的seq
 	CurrentMaxSeq uint32
-	PullMsgOrder  int
+	// 获取消息的顺序: 升序/ 降序
+	PullMsgOrder int
 }
 
 type CmdPushMsgToMsgSync struct {

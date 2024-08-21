@@ -207,6 +207,7 @@ func TransferToLocalBlack(apiBlackList []*server_api_params.PublicUserInfo, owne
 	return localBlackList
 }
 
+// 检查好友差异 (新增/ 删除/...)
 func CheckFriendListDiff(a []*model_struct.LocalFriend, b []*model_struct.LocalFriend) (aInBNot, bInANot, sameA, sameB []int) {
 	//to map, friendid_>friendinfo
 	mapA := make(map[string]*model_struct.LocalFriend)
@@ -292,6 +293,8 @@ func CheckFriendRequestDiff(a []*model_struct.LocalFriendRequest, b []*model_str
 	}
 	return aInBNot, bInANot, sameA, sameB
 }
+
+// 检查黑名单差异
 func CheckBlackListDiff(a []*model_struct.LocalBlack, b []*model_struct.LocalBlack) (aInBNot, bInANot, sameA, sameB []int) {
 	//to map, friendid_>friendinfo
 	mapA := make(map[string]*model_struct.LocalBlack)
@@ -335,6 +338,7 @@ func CheckBlackListDiff(a []*model_struct.LocalBlack, b []*model_struct.LocalBla
 	return aInBNot, bInANot, sameA, sameB
 }
 
+// 检查群信息差异
 func CheckGroupInfoDiff(a []*model_struct.LocalGroup, b []*model_struct.LocalGroup) (aInBNot, bInANot, sameA, sameB []int) {
 	//to map, friendid_>friendinfo
 	mapA := make(map[string]*model_struct.LocalGroup)
@@ -381,6 +385,7 @@ func CheckGroupInfoDiff(a []*model_struct.LocalGroup, b []*model_struct.LocalGro
 	return aInBNot, bInANot, sameA, sameB
 }
 
+// 检查群成员差异
 func CheckGroupMemberDiff(a []*model_struct.LocalGroupMember, b []*model_struct.LocalGroupMember) (aInBNot, bInANot, sameA, sameB []int) {
 	//to map, friendid_>friendinfo
 	mapA := make(map[string]*model_struct.LocalGroupMember)

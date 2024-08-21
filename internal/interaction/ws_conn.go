@@ -143,6 +143,7 @@ func (u *WsConn) IsFatalError(err error) bool {
 	return true
 }
 
+// 重连逻辑
 func (u *WsConn) ReConn() (*websocket.Conn, error, bool) {
 	u.stateMutex.Lock()
 	defer u.stateMutex.Unlock()
@@ -158,6 +159,7 @@ func (u *WsConn) ReConn() (*websocket.Conn, error, bool) {
 
 	url := fmt.Sprintf("%s?sendID=%s&token=%s&platformID=%d&operationID=%s", sdk_struct.SvrConf.WsAddr, u.loginUserID, u.token, sdk_struct.SvrConf.Platform, operationID)
 	log.Info(operationID, "ws connect begin, dail: ", url)
+	// ws dial
 	conn, httpResp, err := websocket.DefaultDialer.Dial(url, nil)
 	log.Info(operationID, "ws connect end, dail : ", url)
 	if err != nil {

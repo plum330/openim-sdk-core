@@ -22,22 +22,25 @@ type Req struct {
 	Batch       int    `json:"batchMsg"`
 }
 
+// 进行登录
 func (ws *WServer) DoLogin(m Req, conn *UserConn) {
 	UserRouteRwLock.RLock()
 	defer UserRouteRwLock.RUnlock()
 	urm, ok := UserRouteMap[m.UserID]
 	if !ok {
 		log.Info("", "login", "user first login: ", m)
+		// 建立uid -> func name -> func
 		refR := GenUserRouterNoLock(m.UserID, m.Batch, m.OperationID)
 		params := []reflect.Value{reflect.ValueOf(m.Data), reflect.ValueOf(m.OperationID)}
 		vf, ok := (refR.refName)[m.ReqFuncName]
 		if ok {
+			// 通过反射调用函数
 			vf.Call(params)
 		} else {
 			log.Info("", "login", "no func name: ", m.ReqFuncName, m)
 			SendOneConnMessage(EventData{m.ReqFuncName, StatusBadParameter, StatusText(StatusBadParameter), "", m.OperationID}, conn)
 		}
-
+		// SendOneConnMessage将信息通过ws通知给服务端
 	} else {
 		if urm.wsRouter.getMyLoginStatus() == constant.LoginSuccess {
 			//send ok
@@ -52,6 +55,7 @@ func (ws *WServer) DoLogin(m Req, conn *UserConn) {
 func (ws *WServer) msgParse(conn *UserConn, jsonMsg []byte) {
 	m := Req{}
 	if err := json.Unmarshal(jsonMsg, &m); err != nil {
+		// 发送解析失败消息通知服务端
 		SendOneConnMessage(EventData{"error", 100, "Unmarshal failed", "", ""}, conn)
 		return
 	}
@@ -68,6 +72,7 @@ func (ws *WServer) msgParse(conn *UserConn, jsonMsg []byte) {
 
 	log.Info("", "msgParse", "recv request from web: ", "reqFuncName ", m.ReqFuncName, "data ", m.Data, "recv jsonMsg: ", string(jsonMsg))
 
+	// 如果是登录操作
 	if m.ReqFuncName == "Login" {
 		//	rwLock.Lock()
 		ws.DoLogin(m, conn)
@@ -82,6 +87,7 @@ func (ws *WServer) msgParse(conn *UserConn, jsonMsg []byte) {
 	//	defer rwLock.RUnlock()
 	urm, ok := UserRouteMap[m.UserID]
 
+	// 不存在说明没有登录
 	if !ok {
 		log.Info("", "msgParse", "user not login failed, must login first: ", m.UserID)
 		SendOneConnMessage(EventData{"Login", StatusNoLogin, StatusText(StatusNoLogin), "", m.OperationID}, conn)
@@ -90,6 +96,7 @@ func (ws *WServer) msgParse(conn *UserConn, jsonMsg []byte) {
 	parms := []reflect.Value{reflect.ValueOf(m.Data), reflect.ValueOf(m.OperationID)}
 	vf, ok := (urm.refName)[m.ReqFuncName]
 	if ok {
+		// 执行UserRouteMap中设置好的函数
 		vf.Call(parms)
 	} else {
 		log.Info("", "msgParse", "no func ", m.ReqFuncName)

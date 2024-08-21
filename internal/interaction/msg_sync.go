@@ -17,7 +17,8 @@ type SeqPair struct {
 type MsgSync struct {
 	*db.DataBase
 	*Ws
-	loginUserID        string
+	loginUserID string
+	// 消息同步时使用到的会话/消息/seq channel
 	conversationCh     chan common.Cmd2Value
 	PushMsgAndMaxSeqCh chan common.Cmd2Value
 
@@ -63,11 +64,13 @@ func (m *MsgSync) GetCh() chan common.Cmd2Value {
 }
 
 func NewMsgSync(dataBase *db.DataBase, ws *Ws, loginUserID string, ch chan common.Cmd2Value, pushMsgAndMaxSeqCh chan common.Cmd2Value, joinedSuperGroupCh chan common.Cmd2Value) *MsgSync {
+	// PushMsgAndMaxSeqCh 消息同步本地channel
 	p := &MsgSync{DataBase: dataBase, Ws: ws, loginUserID: loginUserID, conversationCh: ch, PushMsgAndMaxSeqCh: pushMsgAndMaxSeqCh}
 	p.superGroupMsgSync = NewSuperGroupMsgSync(dataBase, ws, loginUserID, ch, joinedSuperGroupCh)
 	p.selfMsgSync = NewSelfMsgSync(dataBase, ws, loginUserID, ch)
 	//	p.selfMsgSync = NewSelfMsgSyncLatestModel(dataBase, ws, loginUserID, ch)
 	p.compareSeq()
+	// 监听处理消息同步的本地channel
 	go common.DoListener(p)
 	return p
 }

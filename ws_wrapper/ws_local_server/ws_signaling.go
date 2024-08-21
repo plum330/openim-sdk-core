@@ -8,6 +8,7 @@ type SignalingCallback struct {
 	uid string
 }
 
+// signaling回调方法集
 func (s *SignalingCallback) OnReceiveNewInvitation(receiveNewInvitation string) {
 	SendOneUserMessage(EventData{cleanUpfuncName(runFuncName()), 0, "", receiveNewInvitation, "0"}, s.uid)
 }
@@ -40,6 +41,7 @@ func (s *SignalingCallback) OnHangUp(hangUpCallback string) {
 	SendOneUserMessage(EventData{cleanUpfuncName(runFuncName()), 0, "", hangUpCallback, "0"}, s.uid)
 }
 
+// 设置signaling相关的回调
 func (wsRouter *WsFuncRouter) SetSignalingListener() {
 	var sr SignalingCallback
 	sr.uid = wsRouter.uId
@@ -47,6 +49,8 @@ func (wsRouter *WsFuncRouter) SetSignalingListener() {
 	userWorker.SetSignalingListener(&sr)
 }
 
+// signaling相关的ws func router方法集
+// signaling: 邀请/ 加群邀请 / 接受 / 拒绝 / 取消
 func (wsRouter *WsFuncRouter) SignalingInvite(input, operationID string) {
 	userWorker := open_im_sdk.GetUserWorker(wsRouter.uId)
 	if !wsRouter.checkResourceLoadingAndKeysIn(userWorker, input, operationID, runFuncName(), nil) {

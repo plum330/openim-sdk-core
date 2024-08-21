@@ -39,6 +39,7 @@ func GenMsgIncr(userID string) string {
 	return userID + "_" + utils.OperationIDGenerator()
 }
 
+// 每一个操作对应一个通知channel
 func (u *WsRespAsyn) AddCh(userID string) (string, chan GeneralWsResp) {
 	u.wsMutex.Lock()
 	defer u.wsMutex.Unlock()
@@ -82,6 +83,7 @@ func (u *WsRespAsyn) DelCh(msgIncr string) {
 	}
 }
 
+// 数据写入本地通知channel
 func notifyCh(ch chan GeneralWsResp, value GeneralWsResp, timeout int64) error {
 	var flag = 0
 	select {
@@ -97,6 +99,7 @@ func notifyCh(ch chan GeneralWsResp, value GeneralWsResp, timeout int64) error {
 	}
 }
 
+// 将结果通知到对应的channel
 func (u *WsRespAsyn) notifyResp(wsResp GeneralWsResp) error {
 	u.wsMutex.Lock()
 	defer u.wsMutex.Unlock()

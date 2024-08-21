@@ -4,6 +4,7 @@ import (
 	"open_im_sdk/open_im_sdk"
 )
 
+// 用户相关的ws func router 方法集
 func (wsRouter *WsFuncRouter) GetUsersInfo(userIDList string, operationID string) {
 	userWorker := open_im_sdk.GetUserWorker(wsRouter.uId)
 	if !wsRouter.checkResourceLoadingAndKeysIn(userWorker, userIDList, operationID, runFuncName(), nil) {
@@ -32,10 +33,12 @@ type UserCallback struct {
 	uid string
 }
 
+// 用户相关的回调方法
 func (u *UserCallback) OnSelfInfoUpdated(userInfo string) {
 	SendOneUserMessage(EventData{cleanUpfuncName(runFuncName()), 0, "", userInfo, "0"}, u.uid)
 }
 
+// 设置用户相关的回调
 func (wsRouter *WsFuncRouter) SetUserListener() {
 	var u UserCallback
 	u.uid = wsRouter.uId

@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+// 从sqlite获取会话列表
 func (c *Conversation) getAllConversationList(callback open_im_sdk_callback.Base, operationID string) sdk.GetAllConversationListCallback {
 	conversationList, err := c.db.GetAllConversationList()
 	common.CheckDBErrCallback(callback, err, operationID)
@@ -102,6 +103,7 @@ func (c *Conversation) setOneConversationPrivateChat(callback open_im_sdk_callba
 	c.SyncConversations(operationID)
 }
 
+// 置顶会话
 func (c *Conversation) setOneConversationPinned(callback open_im_sdk_callback.Base, conversationID string, isPinned bool, operationID string) {
 	apiReq := &server_api_params.ModifyConversationFieldReq{}
 	localConversation, err := c.db.GetConversation(conversationID)
@@ -219,6 +221,8 @@ func (c *Conversation) pinConversation(callback open_im_sdk_callback.Base, conve
 	//	common.CheckDBErrCallback(callback, err, operationID)
 	//}
 }
+
+// http 获取服务端会话列表
 func (c *Conversation) getServerConversationList(operationID string) (server_api_params.GetAllConversationsResp, error) {
 	log.NewInfo(operationID, utils.GetSelfFuncName())
 	var req server_api_params.GetAllConversationsReq
@@ -250,6 +254,7 @@ func (c *Conversation) SyncConversations(operationID string) {
 	conversationsOnServerTempFormat := common.ServerTransferToTempConversation(conversationsOnServer)
 	conversationsOnServerLocalFormat := common.TransferToLocalConversation(conversationsOnServer)
 
+	// 对比本地会话 和  服务端会话
 	aInBNot, bInANot, sameA, sameB := common.CheckConversationListDiff(conversationsOnServerTempFormat, conversationsOnLocalTempFormat)
 	log.Info(operationID, "diff server cost time", time.Since(ccTime))
 
@@ -456,6 +461,7 @@ func (c *Conversation) getHistoryMessageList(callback open_im_sdk_callback.Base,
 	return sdk.GetHistoryMessageListCallback(messageList)
 }
 
+// 撤回一条消息
 func (c *Conversation) revokeOneMessage(callback open_im_sdk_callback.Base, req sdk.RevokeMessageParams, operationID string) {
 	var recvID, groupID string
 	var localMessage model_struct.LocalChatLog
@@ -500,6 +506,7 @@ func (c *Conversation) revokeOneMessage(callback open_im_sdk_callback.Base, req 
 	if err != nil {
 		log.Error(operationID, "inset into chat log err", localMessage, req)
 	}
+	// 在sqlite标记撤回
 	err = c.db.UpdateColumnsMessageController(req.Content, groupID, req.SessionType, map[string]interface{}{"status": constant.MsgStatusRevoked})
 	if err != nil {
 		log.Error(operationID, "update revoke message err", localMessage, req)
@@ -729,45 +736,45 @@ func (c *Conversation) markGroupMessageAsRead(callback open_im_sdk_callback.Base
 	}
 }
 
-//func (c *Conversation) markMessageAsReadByConID(callback open_im_sdk_callback.Base, msgIDList sdk.MarkMessageAsReadByConIDParams, conversationID, operationID string) {
-//	var localMessage db.LocalChatLog
-//	var newMessageIDList []string
-//	messages, err := c.db.GetMultipleMessage(msgIDList)
-//	common.CheckDBErrCallback(callback, err, operationID)
-//	for _, v := range messages {
-//		if v.IsRead == false && v.ContentType < constant.NotificationBegin && v.SendID != c.loginUserID {
-//			newMessageIDList = append(newMessageIDList, v.ClientMsgID)
+//	func (c *Conversation) markMessageAsReadByConID(callback open_im_sdk_callback.Base, msgIDList sdk.MarkMessageAsReadByConIDParams, conversationID, operationID string) {
+//		var localMessage db.LocalChatLog
+//		var newMessageIDList []string
+//		messages, err := c.db.GetMultipleMessage(msgIDList)
+//		common.CheckDBErrCallback(callback, err, operationID)
+//		for _, v := range messages {
+//			if v.IsRead == false && v.ContentType < constant.NotificationBegin && v.SendID != c.loginUserID {
+//				newMessageIDList = append(newMessageIDList, v.ClientMsgID)
+//			}
 //		}
+//		if len(newMessageIDList) == 0 {
+//			common.CheckAnyErrCallback(callback, 201, errors.New("message has been marked read or sender is yourself"), operationID)
+//		}
+//		conversationID := utils.GetConversationIDBySessionType(userID, constant.SingleChatType)
+//		s := sdk_struct.MsgStruct{}
+//		c.initBasicInfo(&s, constant.UserMsgType, constant.HasReadReceipt, operationID)
+//		s.Content = utils.StructToJsonString(newMessageIDList)
+//		options := make(map[string]bool, 5)
+//		utils.SetSwitchFromOptions(options, constant.IsConversationUpdate, false)
+//		utils.SetSwitchFromOptions(options, constant.IsSenderConversationUpdate, false)
+//		utils.SetSwitchFromOptions(options, constant.IsUnreadCount, false)
+//		utils.SetSwitchFromOptions(options, constant.IsOfflinePush, false)
+//		//If there is an error, the coroutine ends, so judgment is not  required
+//		resp, _ := c.InternalSendMessage(callback, &s, userID, "", operationID, &server_api_params.OfflinePushInfo{}, false, options)
+//		s.ServerMsgID = resp.ServerMsgID
+//		s.SendTime = resp.SendTime
+//		s.Status = constant.MsgStatusFiltered
+//		msgStructToLocalChatLog(&localMessage, &s)
+//		err = c.db.InsertMessage(&localMessage)
+//		if err != nil {
+//			log.Error(operationID, "inset into chat log err", localMessage, s, err.Error())
+//		}
+//		err2 := c.db.UpdateMessageHasRead(userID, newMessageIDList, constant.SingleChatType)
+//		if err2 != nil {
+//			log.Error(operationID, "update message has read error", newMessageIDList, userID, err2.Error())
+//		}
+//		_ = common.TriggerCmdUpdateConversation(common.UpdateConNode{ConID: conversationID, Action: constant.UpdateLatestMessageChange}, c.ch)
+//		//_ = common.TriggerCmdUpdateConversation(common.UpdateConNode{ConID: conversationID, Action: constant.ConChange, Args: []string{conversationID}}, c.ch)
 //	}
-//	if len(newMessageIDList) == 0 {
-//		common.CheckAnyErrCallback(callback, 201, errors.New("message has been marked read or sender is yourself"), operationID)
-//	}
-//	conversationID := utils.GetConversationIDBySessionType(userID, constant.SingleChatType)
-//	s := sdk_struct.MsgStruct{}
-//	c.initBasicInfo(&s, constant.UserMsgType, constant.HasReadReceipt, operationID)
-//	s.Content = utils.StructToJsonString(newMessageIDList)
-//	options := make(map[string]bool, 5)
-//	utils.SetSwitchFromOptions(options, constant.IsConversationUpdate, false)
-//	utils.SetSwitchFromOptions(options, constant.IsSenderConversationUpdate, false)
-//	utils.SetSwitchFromOptions(options, constant.IsUnreadCount, false)
-//	utils.SetSwitchFromOptions(options, constant.IsOfflinePush, false)
-//	//If there is an error, the coroutine ends, so judgment is not  required
-//	resp, _ := c.InternalSendMessage(callback, &s, userID, "", operationID, &server_api_params.OfflinePushInfo{}, false, options)
-//	s.ServerMsgID = resp.ServerMsgID
-//	s.SendTime = resp.SendTime
-//	s.Status = constant.MsgStatusFiltered
-//	msgStructToLocalChatLog(&localMessage, &s)
-//	err = c.db.InsertMessage(&localMessage)
-//	if err != nil {
-//		log.Error(operationID, "inset into chat log err", localMessage, s, err.Error())
-//	}
-//	err2 := c.db.UpdateMessageHasRead(userID, newMessageIDList, constant.SingleChatType)
-//	if err2 != nil {
-//		log.Error(operationID, "update message has read error", newMessageIDList, userID, err2.Error())
-//	}
-//	_ = common.TriggerCmdUpdateConversation(common.UpdateConNode{ConID: conversationID, Action: constant.UpdateLatestMessageChange}, c.ch)
-//	//_ = common.TriggerCmdUpdateConversation(common.UpdateConNode{ConID: conversationID, Action: constant.ConChange, Args: []string{conversationID}}, c.ch)
-//}
 func (c *Conversation) insertMessageToLocalStorage(callback open_im_sdk_callback.Base, s *model_struct.LocalChatLog, operationID string) string {
 	err := c.db.InsertMessageController(s)
 	common.CheckDBErrCallback(callback, err, operationID)
@@ -827,6 +834,7 @@ func (c *Conversation) clearMessageFromSvr(callback open_im_sdk_callback.Base, o
 	c.p.PostFatalCallback(callback, constant.ClearMsgRouter, apiReq, nil, apiReq.OperationID)
 }
 
+// 从sqlite删除消息
 func (c *Conversation) deleteMessageFromLocalStorage(callback open_im_sdk_callback.Base, s *sdk_struct.MsgStruct, operationID string) {
 	var conversation model_struct.LocalConversation
 	var latestMsg sdk_struct.MsgStruct
@@ -903,6 +911,7 @@ func (c *Conversation) judgeMultipleSubString(keywordList []string, main string,
 	return true
 }
 
+// 搜索本地消息
 func (c *Conversation) searchLocalMessages(callback open_im_sdk_callback.Base, searchParam sdk.SearchLocalMessagesParams, operationID string) (r sdk.SearchLocalMessagesCallback) {
 
 	var conversationID, sourceID string
@@ -911,6 +920,7 @@ func (c *Conversation) searchLocalMessages(callback open_im_sdk_callback.Base, s
 	conversationMap := make(map[string]*sdk.SearchByConversationResult, 10)
 	var err error
 
+	// 按照时间搜索
 	if searchParam.SearchTimePosition == 0 {
 		endTime = utils.GetCurrentTimestampBySecond()
 	} else {
@@ -928,7 +938,9 @@ func (c *Conversation) searchLocalMessages(callback open_im_sdk_callback.Base, s
 		if searchParam.PageIndex < 1 || searchParam.Count < 1 {
 			common.CheckAnyErrCallback(callback, 201, errors.New("page or count is null"), operationID)
 		}
+		// 分页 + 偏移
 		offset := (searchParam.PageIndex - 1) * searchParam.Count
+		// 根据会话ID从sqlite搜索
 		localConversation, err := c.db.GetConversation(searchParam.ConversationID)
 		common.CheckDBErrCallback(callback, err, operationID)
 		switch localConversation.ConversationType {
@@ -939,6 +951,7 @@ func (c *Conversation) searchLocalMessages(callback open_im_sdk_callback.Base, s
 		case constant.SuperGroupChatType:
 			sourceID = localConversation.GroupID
 		}
+		// 消息类型 + 关键字
 		if len(searchParam.MessageTypeList) != 0 && len(searchParam.KeywordList) == 0 {
 			list, err = c.db.SearchMessageByContentTypeController(searchParam.MessageTypeList, sourceID, startTime, endTime, int(localConversation.ConversationType), offset, searchParam.Count)
 		} else {
@@ -1051,6 +1064,7 @@ func (c *Conversation) setConversationNotification(msg *server_api_params.MsgDat
 	c.SyncConversations(operationID)
 }
 
+// 通知
 func (c *Conversation) DoNotification(msg *server_api_params.MsgData) {
 	operationID := utils.OperationIDGenerator()
 	log.NewInfo(operationID, utils.GetSelfFuncName(), "args: ", msg)
@@ -1063,6 +1077,7 @@ func (c *Conversation) DoNotification(msg *server_api_params.MsgData) {
 	}()
 }
 
+// 根据seq删除对应的消息
 func (c *Conversation) delMsgBySeq(seqList []uint32) error {
 	var SPLIT = 1000
 	for i := 0; i < len(seqList)/SPLIT; i++ {
@@ -1073,6 +1088,7 @@ func (c *Conversation) delMsgBySeq(seqList []uint32) error {
 	return nil
 }
 
+// 删除消息列表
 func (c *Conversation) delMsgBySeqSplit(seqList []uint32) error {
 	var req server_api_params.DelMsgListReq
 	req.SeqList = seqList
@@ -1081,6 +1097,7 @@ func (c *Conversation) delMsgBySeqSplit(seqList []uint32) error {
 	req.UserID = c.loginUserID
 	operationID := req.OperationID
 
+	// 通过长连接ws进行删除
 	resp, err := c.Ws.SendReqWaitResp(&req, constant.WsDelMsg, 30, 5, c.loginUserID, req.OperationID)
 	if err != nil {
 		return utils.Wrap(err, "SendReqWaitResp failed")
@@ -1107,12 +1124,15 @@ func (c *Conversation) delMsgBySeqSplit(seqList []uint32) error {
 //	common.CheckArgsErrCallback(callback, err, operationID)
 //}
 
+// http 从服务端删除会话和消息
 func (c *Conversation) deleteConversationAndMsgFromSvr(callback open_im_sdk_callback.Base, conversationID, operationID string) {
+	// 从sqlite获取会话
 	local, err := c.db.GetConversation(conversationID)
 	common.CheckDBErrCallback(callback, err, operationID)
 	log.Debug(operationID, utils.GetSelfFuncName(), *local)
 	var seqList []uint32
 	switch local.ConversationType {
+	// 获取消息列表seq
 	case constant.SingleChatType:
 		peerUserID := local.UserID
 		if peerUserID != c.loginUserID {
@@ -1142,29 +1162,38 @@ func (c *Conversation) deleteConversationAndMsgFromSvr(callback open_im_sdk_call
 	apiReq.UserID = c.loginUserID
 	apiReq.OperationID = operationID
 	apiReq.SeqList = seqList
+	// 发送http请求到服务端删除
 	c.p.PostFatalCallback(callback, constant.DeleteMsgRouter, apiReq, nil, apiReq.OperationID)
 	common.CheckArgsErrCallback(callback, err, operationID)
 }
 
+// 从sqlite中删除消息
 func (c *Conversation) deleteAllMsgFromLocal(callback open_im_sdk_callback.Base, operationID string) {
 	log.NewInfo(operationID, utils.GetSelfFuncName())
+	// 从sqlite中删除
 	err := c.db.DeleteAllMessage()
 	common.CheckDBErrCallback(callback, err, operationID)
+	// 从sqlite找那个删除会话
 	err = c.db.CleaAllConversation()
 	common.CheckDBErrCallback(callback, err, operationID)
+	// 从sqlite获取会话列表
 	conversationList, err := c.db.GetAllConversationList()
 	common.CheckDBErrCallback(callback, err, operationID)
 	var cidList []string
 	for _, conversation := range conversationList {
 		cidList = append(cidList, conversation.ConversationID)
 	}
+	// 发送更新会话到本地channel
 	_ = common.TriggerCmdUpdateConversation(common.UpdateConNode{Action: constant.ConChange, Args: cidList}, c.GetCh())
+	// 更新会话
 	c.doUpdateConversation(common.Cmd2Value{Value: common.UpdateConNode{"", constant.TotalUnreadMessageChanged, ""}})
 
 }
 
+// 删除服务端消息
 func (c *Conversation) deleteAllMsgFromSvr(callback open_im_sdk_callback.Base, operationID string) {
 	log.NewInfo(operationID, utils.GetSelfFuncName())
+	// 从sqlite获取未删除的msg seq
 	seqList, err := c.db.GetAllUnDeleteMessageSeqList()
 	log.NewInfo(operationID, utils.GetSelfFuncName(), seqList)
 	common.CheckDBErrCallback(callback, err, operationID)
@@ -1173,5 +1202,6 @@ func (c *Conversation) deleteAllMsgFromSvr(callback open_im_sdk_callback.Base, o
 	apiReq.UserID = c.loginUserID
 	apiReq.OperationID = operationID
 	apiReq.SeqList = seqList
+	// http 发送需要删除的msg seq到服务端进行删除
 	c.p.PostFatalCallback(callback, constant.DeleteMsgRouter, apiReq, nil, apiReq.OperationID)
 }

@@ -91,6 +91,7 @@ func (w *Ws) SendReqWaitResp(m proto.Message, reqIdentifier int32, timeout, retr
 	}
 	flag := 0
 	for i := 0; i < retryTimes+1; i++ {
+		// ws发送请求到服务端
 		connSend, err = w.writeBinaryMsg(wsReq)
 		if err != nil {
 			if !w.IsWriteTimeout(err) {
@@ -159,6 +160,8 @@ func (w *Ws) WaitTest(ch chan GeneralWsResp, timeout int, operationID string, co
 		return false
 	}
 }
+
+// 重连
 func (w *Ws) reConnSleep(operationID string, sleep int32) (error, bool) {
 	_, err, isNeedReConn := w.WsConn.ReConn()
 	if err != nil {
@@ -168,12 +171,14 @@ func (w *Ws) reConnSleep(operationID string, sleep int32) (error, bool) {
 	return err, isNeedReConn
 }
 
+// 从ws中读取消息
 func (w *Ws) ReadData() {
 	isErrorOccurred := false
 	for {
 		operationID := utils.OperationIDGenerator()
 		if isErrorOccurred {
 			select {
+			// ws读取消息异常情况下从本地channel读取信息处理
 			case r := <-w.cmdCh:
 				if r.Cmd == constant.CmdLogout {
 					log.Info(operationID, "recv CmdLogout, return, close conn")
@@ -239,6 +244,7 @@ func (w *Ws) ReadData() {
 	}
 }
 
+// 处理从ws读取到的消息
 func (w *Ws) doWsMsg(message []byte) {
 	wsResp, err := w.decodeBinaryWs(message)
 	if err != nil {

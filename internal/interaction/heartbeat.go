@@ -67,6 +67,7 @@ func (u *Heartbeat) Run() {
 		operationID := utils.OperationIDGenerator()
 		if heartbeatNum != 0 {
 			select {
+			// 通过channel解耦，从本地channel中读取信息处理不同的命令
 			case r := <-u.cmdCh:
 				if r.Cmd == constant.CmdLogout {
 					log.Warn(operationID, "recv logout cmd, close conn,  set logout state, Goexit...")
@@ -100,6 +101,7 @@ func (u *Heartbeat) Run() {
 			log.Error(operationID, "GetReadDiffusionGroupIDList failed ", err.Error())
 		}
 		log.Debug(operationID, "GetJoinedSuperGroupIDList ", groupIDList)
+		// 每一次心跳都触发获取一次seq ?
 		resp, err := u.SendReqWaitResp(&server_api_params.GetMaxAndMinSeqReq{UserID: u.loginUserID, GroupIDList: groupIDList}, constant.WSGetNewestSeq, reqTimeout, retryTimes, u.loginUserID, operationID)
 		if err != nil {
 			log.Error(operationID, "SendReqWaitResp failed ", err.Error(), constant.WSGetNewestSeq, reqTimeout, u.loginUserID)
@@ -124,6 +126,7 @@ func (u *Heartbeat) Run() {
 			groupID2MaxSeqOnSvr[groupID] = seq.MaxSeq
 		}
 		for {
+			// 发送获取到的newest seq到本地channel， 然后触发获取msg sync
 			err = common.TriggerCmdMaxSeq(sdk_struct.CmdMaxSeqToMsgSync{OperationID: operationID, MaxSeqOnSvr: wsSeqResp.MaxSeq, GroupID2MaxSeqOnSvr: groupID2MaxSeqOnSvr}, u.PushMsgAndMaxSeqCh)
 			if err != nil {
 				log.Error(operationID, "TriggerMaxSeq failed ", err.Error(), " MaxSeq ", wsSeqResp.MaxSeq)

@@ -11,6 +11,7 @@ type GroupCallback struct {
 	uid string
 }
 
+// 群操作的回调方法集
 func (g *GroupCallback) OnJoinedGroupAdded(groupInfo string) {
 	SendOneUserMessage(EventData{cleanUpfuncName(runFuncName()), 0, "", groupInfo, "0"}, g.uid)
 }
@@ -46,6 +47,7 @@ func (g *GroupCallback) OnGroupApplicationRejected(groupApplication string) {
 	SendOneUserMessage(EventData{cleanUpfuncName(runFuncName()), 0, "", groupApplication, "0"}, g.uid)
 }
 
+// 设置群操作的回调方法集
 func (wsRouter *WsFuncRouter) SetGroupListener() {
 	var g GroupCallback
 	g.uid = wsRouter.uId
@@ -53,6 +55,7 @@ func (wsRouter *WsFuncRouter) SetGroupListener() {
 	userWorker.SetGroupListener(&g)
 }
 
+// ws func router 群相关的方法集
 func (wsRouter *WsFuncRouter) CreateGroup(input, operationID string) {
 	m := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(input), &m); err != nil {

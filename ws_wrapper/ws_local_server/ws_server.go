@@ -40,9 +40,11 @@ type WServer struct {
 	wsAddr       string
 	wsMaxConnNum int
 	wsUpGrader   *websocket.Upgrader
+	// 用户和ws conn之间的关系
 	wsConnToUser map[*UserConn]map[string]string
 	wsUserToConn map[string]map[string]*UserConn
-	ch           chan ChanMsg
+	// 本地channel
+	ch chan ChanMsg
 }
 
 func (ws *WServer) OnInit(wsPort int) {
@@ -69,6 +71,7 @@ func (ws *WServer) Run() {
 	}
 }
 
+// 单独一个goroutine, 从ws的本地channel中读取信
 func (ws *WServer) getMsgAndSend() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -83,6 +86,7 @@ func (ws *WServer) getMsgAndSend() {
 	for {
 		select {
 		case r := <-ws.ch:
+			// 读取成功就启动一个goroutine进行处理
 			go func() {
 				operationID := utils2.OperationIDGenerator()
 				log.Info(operationID, "getMsgAndSend channel: ", string(r.data), r.uid)
@@ -94,6 +98,7 @@ func (ws *WServer) getMsgAndSend() {
 					r.data = nil
 				}
 				log.Info(operationID, "conns  ", conns, r.uid+" "+utils.PlatformIDToName(sdk_struct.SvrConf.Platform))
+				// 触发所有连接
 				for _, conn := range conns {
 					if conn != nil {
 						err := WS.writeMsg(conn, websocket.TextMessage, r.data)
@@ -114,6 +119,7 @@ func (ws *WServer) getMsgAndSend() {
 }
 
 func (ws *WServer) wsHandler(w http.ResponseWriter, r *http.Request) {
+	// 生成operation id，用于跟踪，类似trace id，只是由端上按照一定规则生成
 	operationID := utils2.OperationIDGenerator()
 	log.Info(operationID, "wsHandler ", r.URL.Query())
 	defer func() {
@@ -135,7 +141,9 @@ func (ws *WServer) wsHandler(w http.ResponseWriter, r *http.Request) {
 			//userID+" "+platformID->conn
 			SendID := query["sendID"][0] + " " + utils.PlatformIDToName(int32(utils.StringToInt64(query["platformID"][0])))
 			newConn := &UserConn{conn, new(sync.Mutex)}
+			// 把建立的ws连接，添加到内存中管理起来
 			ws.addUserConn(SendID, newConn, operationID)
+			// 读取ws消息
 			go ws.readMsg(newConn)
 		}
 	} else {
@@ -151,6 +159,8 @@ func pMem() {
 	fmt.Println("mem for test os ", m.Sys)
 	fmt.Println("mem for test HeapAlloc ", m.HeapAlloc)
 }
+
+// 读取消息
 func (ws *WServer) readMsg(conn *UserConn) {
 	for {
 		msgType, msg, err := conn.ReadMessage()
@@ -160,6 +170,7 @@ func (ws *WServer) readMsg(conn *UserConn) {
 			//log.Info("debug memory delUserConn begin ")
 			//time.Sleep(1 * time.Second)
 
+			// 读消息错误，删除对应连接
 			ws.delUserConn(conn)
 			//log.Info("debug memory delUserConn end  ")
 			//time.Sleep(1 * time.Second)
@@ -173,21 +184,24 @@ func (ws *WServer) readMsg(conn *UserConn) {
 		//log.Info("debug memory msgParse begin ", m)
 		//time.Sleep(1 * time.Second)
 
+		// 解析消息
 		ws.msgParse(conn, msg)
 		//log.Info("debug memory msgParse end ", m)
 		//time.Sleep(1 * time.Second)
 	}
 }
 
+// 发送消息到长连接
 func (ws *WServer) writeMsg(conn *UserConn, a int, msg []byte) error {
 	conn.w.Lock()
 	defer conn.w.Unlock()
 	return conn.WriteMessage(a, msg)
 
 }
+
+// 保存user和conn的映射关系 uid -> ip -> conn / conn -> ip -> uid
 func (ws *WServer) addUserConn(uid string, conn *UserConn, operationID string) {
 	rwLock.Lock()
-
 	var flag int32
 	if oldConnMap, ok := ws.wsUserToConn[uid]; ok {
 		flag = 1
@@ -231,6 +245,8 @@ func (ws *WServer) addUserConn(uid string, conn *UserConn, operationID string) {
 	}
 
 }
+
+// 获取uid对应的连接数
 func (ws *WServer) getConnNum(uid string) int {
 	rwLock.Lock()
 	defer rwLock.Unlock()
@@ -301,13 +317,16 @@ func (ws *WServer) getUserUid(conn *UserConn) string {
 	return "getUserUid"
 }
 
+// 请求头检查
 func (ws *WServer) headerCheck(w http.ResponseWriter, r *http.Request) bool {
 
 	status := http.StatusUnauthorized
 	query := r.URL.Query()
 	log.Info("headerCheck: ", query["token"], query["platformID"], query["sendID"])
 	if len(query["token"]) != 0 && len(query["sendID"]) != 0 && len(query["platformID"]) != 0 {
+		// 构建send id
 		SendID := query["sendID"][0] + " " + utils.PlatformIDToName(int32(utils.StringToInt64(query["platformID"][0])))
+		// 应该是限制sdk在同一个端上的连接数 （如web端集成也只用集成一个openim sdk，这样就可以在同一个sdk中限制连接数）
 		if ws.getConnNum(SendID) >= POINTNUM {
 			log.Info("Over quantity failed", query, ws.getConnNum(SendID), SendID)
 			w.Header().Set("Sec-Websocket-Version", "13")

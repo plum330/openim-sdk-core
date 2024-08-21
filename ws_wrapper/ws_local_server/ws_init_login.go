@@ -17,6 +17,7 @@ type InitCallback struct {
 	uid string
 }
 
+// 初始化回调方法集
 func (i *InitCallback) OnConnecting() {
 	var ed EventData
 	ed.Event = cleanUpfuncName(runFuncName())
@@ -63,12 +64,15 @@ func (i *InitCallback) OnSelfInfoUpdated(userInfo string) {
 
 var ConfigSvr string
 
+// 初始化相关的ws func router方法集
 func (wsRouter *WsFuncRouter) InitSDK(config string, operationID string) {
+	// 初始化回调对象
 	var initcb InitCallback
 	initcb.uid = wsRouter.uId
 	log.Info(operationID, "Initsdk uid: ", initcb.uid, config)
 	c := sdk_struct.IMConfig{}
 	json.Unmarshal([]byte(config), &c)
+	// 获取LoginMgr <- UserRouterMap map[string]*login.LoginMgr
 	userWorker := open_im_sdk.GetUserWorker(wsRouter.uId)
 	if userWorker.InitSDK(c, &initcb, operationID) {
 		//	wsRouter.GlobalSendMessage(EventData{cleanUpfuncName(runFuncName()), 0, "", "", operationID})
@@ -77,6 +81,7 @@ func (wsRouter *WsFuncRouter) InitSDK(config string, operationID string) {
 	}
 }
 
+// 从UserRouterMap中删除LoginMgr对象
 func (wsRouter *WsFuncRouter) UnInitSDK() {
 	log.Info("", "UnInitSDK uid: ", wsRouter.uId)
 	open_im_sdk.UserSDKRwLock.Lock()
@@ -85,6 +90,7 @@ func (wsRouter *WsFuncRouter) UnInitSDK() {
 	open_im_sdk.UserSDKRwLock.Unlock()
 }
 
+// 检查keys是否都存在map中 。。。
 func (wsRouter *WsFuncRouter) checkResourceLoadingAndKeysIn(mgr *login.LoginMgr, input, operationID, funcName string, m map[string]interface{}, keys ...string) bool {
 	for _, k := range keys {
 		_, ok := m[k]
@@ -103,6 +109,7 @@ func (wsRouter *WsFuncRouter) checkResourceLoadingAndKeysIn(mgr *login.LoginMgr,
 	return true
 }
 
+// 检查keys是否都存在map中
 func (wsRouter *WsFuncRouter) checkKeysIn(input, operationID, funcName string, m map[string]interface{}, keys ...string) bool {
 	for _, k := range keys {
 		_, ok := m[k]
@@ -123,6 +130,7 @@ func (wsRouter *WsFuncRouter) Login(input string, operationID string) {
 		return
 	}
 	userWorker := open_im_sdk.GetUserWorker(wsRouter.uId)
+	// 检查input的解析信息中是否存在user id 和 token
 	if !wsRouter.checkKeysIn(input, operationID, runFuncName(), m, "userID", "token") {
 		return
 	}
@@ -149,7 +157,7 @@ func (wsRouter *WsFuncRouter) GetLoginStatus(input string, operationID string) {
 	wsRouter.GlobalSendMessage(EventData{cleanUpfuncName(runFuncName()), 0, "", int32ToString(int32(userWorker.GetLoginStatus())), operationID})
 }
 
-//1
+// 1
 func (wsRouter *WsFuncRouter) getMyLoginStatus() int32 {
 	userWorker := open_im_sdk.GetUserWorker(wsRouter.uId)
 	if !wsRouter.checkResourceLoadingAndKeysIn(userWorker, "", "", runFuncName(), nil) {
@@ -158,7 +166,7 @@ func (wsRouter *WsFuncRouter) getMyLoginStatus() int32 {
 	return userWorker.GetLoginStatus()
 }
 
-//1
+// 1
 func (wsRouter *WsFuncRouter) GetLoginUser(input string, operationID string) {
 	userWorker := open_im_sdk.GetUserWorker(wsRouter.uId)
 	if !wsRouter.checkResourceLoadingAndKeysIn(userWorker, input, operationID, runFuncName(), nil) {

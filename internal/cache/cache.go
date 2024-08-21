@@ -12,6 +12,8 @@ type UserInfo struct {
 	Nickname string
 	faceURL  string
 }
+
+// 缓存用户信息/ 好友/ ...
 type Cache struct {
 	user    *user.User
 	friend  *friend.Friend
@@ -26,8 +28,10 @@ func (c *Cache) Update(userID, faceURL, nickname string) {
 	c.userMap.Store(userID, UserInfo{faceURL: faceURL, Nickname: nickname})
 }
 
+// 获取用户名 + 头像
 func (c *Cache) GetUserNameAndFaceURL(userID string, operationID string) (faceURL, name string, err error) {
 	//find in cache
+	// 首先从本地cache查找
 	user, ok := c.userMap.Load(userID)
 	if ok {
 		faceURL = user.(UserInfo).faceURL
@@ -35,6 +39,7 @@ func (c *Cache) GetUserNameAndFaceURL(userID string, operationID string) (faceUR
 		return faceURL, name, nil
 	}
 
+	// 从sqlite中查找好友信息
 	//get from local db
 	friendInfo, err := c.friend.Db().GetFriendInfoByFriendUserID(userID)
 	if err == nil {
@@ -51,6 +56,7 @@ func (c *Cache) GetUserNameAndFaceURL(userID string, operationID string) (faceUR
 		operationID = utils.OperationIDGenerator()
 	}
 
+	// 查找用户信息
 	userInfos, err := c.user.GetUsersInfoFromCacheSvr([]string{userID}, operationID)
 	if err != nil {
 		return "", "", err

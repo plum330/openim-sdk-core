@@ -152,6 +152,7 @@ func (u *LoginMgr) wakeUp(cb open_im_sdk_callback.Base, operationID string) {
 	cb.OnSuccess("")
 }
 
+// 登录逻辑 -- 初始化相关对象
 func (u *LoginMgr) login(userID, token string, cb open_im_sdk_callback.Base, operationID string) {
 	log.Info(operationID, "login start... ", userID, token, sdk_struct.SvrConf)
 	err, exp := CheckToken(userID, token, operationID)
@@ -171,11 +172,13 @@ func (u *LoginMgr) login(userID, token string, cb open_im_sdk_callback.Base, ope
 
 	wsRespAsyn := ws.NewWsRespAsyn()
 	wsConn := ws.NewWsConn(u.connListener, token, userID)
+	// 会话相关的本地channel
 	u.conversationCh = make(chan common.Cmd2Value, 1000)
+	// 命令相关的本地channel
 	u.cmdWsCh = make(chan common.Cmd2Value, 10)
-
+	// 心跳相关的本地channel
 	u.heartbeatCmdCh = make(chan common.Cmd2Value, 10)
-
+	// 消息/seq相关的本地channel
 	u.pushMsgAndMaxSeqCh = make(chan common.Cmd2Value, 1000)
 	u.ws = ws.NewWs(wsRespAsyn, wsConn, u.cmdWsCh, u.pushMsgAndMaxSeqCh, u.heartbeatCmdCh)
 	u.joinedSuperGroupCh = make(chan common.Cmd2Value, 10)
@@ -250,6 +253,7 @@ func (u *LoginMgr) InitSDK(config sdk_struct.IMConfig, listener open_im_sdk_call
 	return true
 }
 
+// 退出逻辑
 func (u *LoginMgr) logout(callback open_im_sdk_callback.Base, operationID string) {
 	log.Info(operationID, "TriggerCmdLogout ws...")
 
@@ -259,6 +263,7 @@ func (u *LoginMgr) logout(callback open_im_sdk_callback.Base, operationID string
 		return
 	}
 
+	// 发送退出命令到本地channel
 	err := common.TriggerCmdLogout(u.cmdWsCh)
 	if err != nil {
 		log.Error(operationID, "TriggerCmdLogout failed ", err.Error())
@@ -315,6 +320,7 @@ func (u *LoginMgr) GetLoginStatus() int32 {
 	return u.ws.LoginState()
 }
 
+// 强制同步
 func (u *LoginMgr) forcedSynchronization() {
 	operationID := utils.OperationIDGenerator()
 	var wg sync.WaitGroup
@@ -330,6 +336,7 @@ func (u *LoginMgr) forcedSynchronization() {
 		wg.Done()
 	}()
 
+	// 同步好友申请
 	go func() {
 		u.friend.SyncFriendApplication(operationID)
 		wg.Done()

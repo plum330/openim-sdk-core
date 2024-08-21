@@ -12,10 +12,13 @@ func init() {
 }
 
 var UserSDKRwLock sync.RWMutex
+
+// 全局变量保存用户的LoginMgr信息 uid -> LoginMgr
 var UserRouterMap map[string]*login.LoginMgr
 
 var userForSDK *login.LoginMgr
 
+// 获取用户对应的LoginMgr对象
 func GetUserWorker(uid string) *login.LoginMgr {
 	UserSDKRwLock.Lock()
 	defer UserSDKRwLock.Unlock()

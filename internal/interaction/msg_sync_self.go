@@ -166,6 +166,7 @@ func (m *SelfMsgSync) doPushSingleMsg(cmd common.Cmd2Value) {
 	m.syncMsg(operationID)
 }
 
+// 从服务端同步消息
 func (m *SelfMsgSync) syncMsg(operationID string) {
 	if m.seqMaxNeedSync > m.seqMaxSynchronized {
 		log.Info(operationID, "do syncMsg ", m.seqMaxSynchronized+1, m.seqMaxNeedSync)
@@ -177,16 +178,20 @@ func (m *SelfMsgSync) syncMsg(operationID string) {
 	}
 }
 
+// 从服务端同步消息
 func (m *SelfMsgSync) syncMsgFromServer(beginSeq, endSeq uint32) {
+	// 校验同步begin / end seq合法性
 	if beginSeq > endSeq {
 		log.Error("", "beginSeq > endSeq", beginSeq, endSeq)
 		return
 	}
 
 	var needSyncSeqList []uint32
+	// 需要同步的seq是连续的
 	for i := beginSeq; i <= endSeq; i++ {
 		needSyncSeqList = append(needSyncSeqList, i)
 	}
+	// 如果需要同步的seq太多，分成多次同步 （每次1000个seq）
 	var SPLIT = splitPullMsgNum
 	for i := 0; i < len(needSyncSeqList)/SPLIT; i++ {
 		m.syncMsgFromServerSplit(needSyncSeqList[i*SPLIT : (i+1)*SPLIT])
@@ -197,6 +202,7 @@ func (m *SelfMsgSync) syncMsgFromServer(beginSeq, endSeq uint32) {
 func (m *SelfMsgSync) syncMsgFromCache2ServerSplit(needSyncSeqList []uint32) {
 	var msgList []*server_api_params.MsgData
 	var noInCache []uint32
+	// 检查seq在内存中是否已存在
 	for _, v := range needSyncSeqList {
 		cacheMsg, ok := m.pushMsgCache[v]
 		if !ok {
@@ -207,6 +213,7 @@ func (m *SelfMsgSync) syncMsgFromCache2ServerSplit(needSyncSeqList []uint32) {
 		}
 	}
 	operationID := utils.OperationIDGenerator()
+	// 要同步的seq都在内存中存在
 	if len(noInCache) == 0 {
 		m.TriggerCmdNewMsgCome(msgList, operationID)
 		return
@@ -218,6 +225,7 @@ func (m *SelfMsgSync) syncMsgFromCache2ServerSplit(needSyncSeqList []uint32) {
 	for {
 		operationID = utils.OperationIDGenerator()
 		pullMsgReq.OperationID = operationID
+		// 同步
 		resp, err := m.SendReqWaitResp(&pullMsgReq, constant.WSPullMsgBySeqList, 60, 2, m.loginUserID, operationID)
 		if err != nil {
 			log.Error(operationID, "SendReqWaitResp failed ", err.Error(), constant.WSPullMsgBySeqList, 60, 2, m.loginUserID)

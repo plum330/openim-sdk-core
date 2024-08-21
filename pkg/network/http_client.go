@@ -37,7 +37,7 @@ func retry(url string, data interface{}, token string, attempts int, sleep time.
 	return b, nil
 }
 
-//application/json; charset=utf-8
+// application/json; charset=utf-8
 func Post2Api(url string, data interface{}, token string) (content []byte, err error) {
 	c, err := postLogic(url, data, token)
 	return c, utils.Wrap(err, " post")
@@ -48,6 +48,7 @@ func Post2ApiForRead(url string, data interface{}, token string) (content []byte
 	return retry(url, data, token, 3, 10*time.Second, postLogic)
 }
 
+// 具体的http请求逻辑
 func postLogic(url string, data interface{}, token string) (content []byte, err error) {
 	jsonStr, err := json.Marshal(data)
 	if err != nil {

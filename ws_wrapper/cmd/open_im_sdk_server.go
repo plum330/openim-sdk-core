@@ -25,6 +25,7 @@ import (
 	"sync"
 )
 
+// sdk运行入口
 func main() {
 	go func() {
 
@@ -35,6 +36,7 @@ func main() {
 	//
 	//openIMTerminalType := flag.String("terminal_type", "web", "different terminal types")
 
+	// 解析参数
 	sdkWsPort = flag.Int("sdk_ws_port", 30000, "openIMSDK ws listening port")
 	openIMApiPort = flag.Int("openIM_api_port", 10000, "openIM api listening port")
 	openIMWsPort = flag.Int("openIM_ws_port", 17778, "openIM ws listening port")
@@ -56,6 +58,7 @@ func main() {
 	sysType := runtime.GOOS
 	log.NewPrivateLog(constant.LogFileName, uint32(*logLevel))
 	open_im_sdk.SetHeartbeatInterval(5)
+	// 区分不同的运行系统环境
 	switch sysType {
 
 	case "darwin":

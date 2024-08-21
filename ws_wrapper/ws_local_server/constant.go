@@ -14,10 +14,13 @@ import (
 const CMDLogin = "Login"
 
 type RefRouter struct {
-	refName  map[string]reflect.Value
+	// func name -> func
+	refName map[string]reflect.Value
+	// 涉及相关操作方法
 	wsRouter *WsFuncRouter
 }
 
+// UserRouteMap存放的是uid -> func name -> func
 var UserRouteMap map[string]RefRouter
 
 var UserRouteRwLock sync.RWMutex

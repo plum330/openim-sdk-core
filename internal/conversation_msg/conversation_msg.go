@@ -30,6 +30,7 @@ import (
 
 var SearchContentType = []int{constant.Text, constant.AtText, constant.File}
 
+// 会话对象结构
 type Conversation struct {
 	*ws.Ws
 	db                   *db.DataBase
@@ -530,7 +531,7 @@ func (c *Conversation) msgStructToLocalErrChatLog(m *sdk_struct.MsgStruct) *mode
 	return &lc
 }
 
-//deprecated
+// deprecated
 func (c *Conversation) revokeMessage(msgRevokeList []*sdk_struct.MsgStruct) {
 	for _, w := range msgRevokeList {
 		if c.msgListener != nil {
@@ -903,6 +904,7 @@ func (c *Conversation) doUpdateConversation(c2v common.Cmd2Value) {
 	}
 }
 
+// 接收到本地channel中的信息，进行处理
 func (c *Conversation) Work(c2v common.Cmd2Value) {
 
 	log.Info("internal", "doListener work..", c2v.Cmd)

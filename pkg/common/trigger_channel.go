@@ -18,6 +18,7 @@ func TriggerCmdJoinedSuperGroup(cmd sdk_struct.CmdJoinedSuperGroup, joinedSuperG
 	return sendCmd(joinedSuperGroupCh, c2v, 100)
 }
 
+// 发送消息到本地会话channel conversation channel
 func TriggerCmdNewMsgCome(msg sdk_struct.CmdNewMsgComeToConversation, conversationCh chan Cmd2Value) error {
 	if conversationCh == nil {
 		return utils.Wrap(errors.New("ch == nil"), "")
@@ -26,6 +27,7 @@ func TriggerCmdNewMsgCome(msg sdk_struct.CmdNewMsgComeToConversation, conversati
 		return nil
 	}
 
+	// 组装命令和对应的数据
 	c2v := Cmd2Value{Cmd: constant.CmdNewMsgCome, Value: msg}
 	return sendCmd(conversationCh, c2v, 100)
 }
@@ -75,6 +77,7 @@ func TriggerCmdPushMsg(msg sdk_struct.CmdPushMsgToMsgSync, ch chan Cmd2Value) er
 	return sendCmd(ch, c2v, 100)
 }
 
+// 触发max seq发送
 func TriggerCmdMaxSeq(seq sdk_struct.CmdMaxSeqToMsgSync, ch chan Cmd2Value) error {
 	if ch == nil {
 		return utils.Wrap(errors.New("ch == nil"), "")
@@ -114,10 +117,12 @@ type goroutine interface {
 	GetCh() chan Cmd2Value
 }
 
+// 进行监听 - 读取本地channel进行处理
 func DoListener(Li goroutine) {
 	log.Info("internal", "doListener start.", Li.GetCh())
 	for {
 		select {
+		// 读取本地channel信息
 		case cmd := <-Li.GetCh():
 			if cmd.Cmd == constant.CmdUnInit {
 				log.Warn("", "close doListener channel ", Li.GetCh())
@@ -130,6 +135,7 @@ func DoListener(Li goroutine) {
 	}
 }
 
+// 发送cmd到本地channel
 func sendCmd(ch chan Cmd2Value, value Cmd2Value, timeout int64) error {
 	var flag = 0
 	select {
